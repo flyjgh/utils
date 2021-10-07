@@ -1,4 +1,4 @@
-include("C:/Users/jgh/prog/utils/Diff/src/diffutils.jl")
+include("../src/diffutils.jl")
 using .diffutils
 using Statistics
 using Flux: Dense, ADAM, relu, gradient, params, update!
