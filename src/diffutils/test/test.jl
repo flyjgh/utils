@@ -30,6 +30,7 @@ function train(model, opt, n)
     end
 end
 
-train(m, optimiser, 10000)
-
 f(d(2048, 1024), x)
+
+train(m, optimiser, 10000)
+m([4f-1, 6f-1])
