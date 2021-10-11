@@ -14,6 +14,9 @@ module layers
     glorot_uniform(rng::AbstractRNG, dims...) = (rand(rng, Float32, dims...) .- 5f-1) .* sqrt(24f0 / sum(nfan(dims...)))
     glorot_uniform(dims...) = glorot_uniform(Random.GLOBAL_RNG, dims...)
     # -------------------------------------------------------------------
+    """
+    less alloc and slightly faster than Flux.Dense for CuArrays.
+    """
     struct Densegpu{A}
         W::CuArray{Float32, 2}
         b::CuArray{Float32, 1}
