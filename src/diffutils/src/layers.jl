@@ -1,5 +1,6 @@
 module layers
 
+    using Random
     using CUDA: CuArray
     using Flux: @functor
 
