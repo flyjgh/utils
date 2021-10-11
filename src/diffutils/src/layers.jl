@@ -28,6 +28,8 @@ module layers
     end
     @functor Densegpu
 
-    (a::Densegpu)(x::CuArray{Float32,N}) where {Float32,N} = a.σ(a.W * x .+ a.b)
+    (a::Densegpu)(x::CuArray{Float32,N}) where {Float32,N} = a.σ.(a.W * x .+ a.b)
+    (a::Densegpu{identity})(x::CuArray{Float32,N}) where {Float32,N} = a.σ(a.W * x .+ a.b)
+    # -------------------------------------------------------------------
 
 end
