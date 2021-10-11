@@ -1,10 +1,12 @@
 include("../src/diffutils.jl")
 using .diffutils
 using Statistics
-using Flux: Dense, ADAM, relu, gradient, params, update!
+using Flux: Dense, ADAM, relu, gradient, params, update!, σ
 
+d = Densegpu(2048, 1024, σ)
+x = rand(Float32, 2048, 64) |> CuArray
 
-m2 = Parallelism(Dense(4, 2) ∘ vcat, Nonlinear(2), Nonlinear(2))
+m = Parallelism(Densegpu(4, 2) ∘ vcat, Nonlinear(2), Nonlinear(2))
 
 function loss(model, X, y)
     ŷ = model(X)
@@ -28,7 +30,6 @@ function train(model, opt, n)
     end
 end
 
-train(m2, optimiser, 10000)
+train(m, optimiser, 10000)
 
-m2([4f-1, 6f-1])
-n = Nonlinear(2)
+f(d(2048, 1024), x)
