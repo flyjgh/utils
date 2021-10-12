@@ -1,4 +1,4 @@
-module diffutils
+module arch
     
     using Flux: @functor
     using Flux: Chain
