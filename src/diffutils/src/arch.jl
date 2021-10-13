@@ -1,4 +1,3 @@
-module arch
     
     using Flux: @functor
     using Flux: Chain
@@ -11,11 +10,6 @@ module arch
     using Flux: σ
     using Base: @pure
     
-    export Split, Join, Parallelism
-    export Nonlinear
-    export WCell
-    
-    # -------------------------------------------------------------------
     # Control Flow                                                                                     
     # ------------------------------------------------------------------- 
     """
@@ -161,4 +155,3 @@ module arch
         x |> m.weightlayer |> m.layer
     end
 
-end

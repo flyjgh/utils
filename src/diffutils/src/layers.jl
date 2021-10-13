@@ -1,10 +1,6 @@
-module layers
-
     using Random
     using CUDA: CuArray
     using Flux: @functor
-
-    export Densegpu
 
     # -------------------------------------------------------------------
     nfan() = 1, 1
@@ -33,4 +29,3 @@ module layers
     (a::Densegpu{identity})(x::CuArray{Float32,N}) where {Float32,N} = a.σ(a.W * x .+ a.b)
     # -------------------------------------------------------------------
 
-end
