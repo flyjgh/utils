@@ -1,4 +1,3 @@
-    
     using Flux: @functor
     using Flux: Chain
     using Flux: Dense
@@ -154,4 +153,3 @@
     function (m::WCell)(x::T) where T
         x |> m.weightlayer |> m.layer
     end
-
