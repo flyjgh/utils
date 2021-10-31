@@ -1,7 +1,7 @@
 module diffutils
     export Split, Join, Parallelism
     export Nonlinear
-    export WCell
+    export WCell, CWCell
 
     export Densegpu	
 
