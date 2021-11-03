@@ -28,6 +28,20 @@ end
 (a::Densegpu{identity})(x::CuArray{Float32,N}) where N = a.W * x .+ a.b
 
 # -------------------------------------------------------------------
+"""
+                            -------<------<-----
+                          /                      ↖
+                         ↓                        |
+                        \\ /                       |
+               ---------- --------------          |
+    In        |          |              |         |
+    In      \\ |          |         ƒ    | /      ↗
+    ------>     ---->----∘---->----:----    -->--
+            / |        comb             | \\    state (output)
+              |                         |
+               -------------------------
+
+"""
 struct Recurrent{T,M,N}
     comb::T
     state::M
@@ -48,29 +62,29 @@ function (a::Recurrent)(x::T) where T
 end
 # -------------------------------------------------------------------
 
-struct RecurrentLayer{T,M,N,P,A}
+struct RecurrentDense{T,M,N,P,A}
     comb::T
     state::M
     W::N
     b::P
     σ::A
 end
-@functor Recurrent
+@functor RecurrentDense
 
-function Recurrent(In::Int, out::Int, comb, σ=identity, gpu=false)
+function RecurrentDense(In::Int, out::Int, comb, σ=identity, gpu=false)
     gpu ?
-        Recurrent(comb, zeros(Float32, out) |> CuArray, glorot_uniform(out, In) |> CuArray, glorot_uniform(out) |> CuArray, σ) :
-        Recurrent(comb, zeros(Float32, out), glorot_uniform(out, In), glorot_uniform(out), σ)
+        RecurrentDense(comb, zeros(Float32, out) |> CuArray, glorot_uniform(out, In) |> CuArray, glorot_uniform(out) |> CuArray, σ) :
+        RecurrentDense(comb, zeros(Float32, out), glorot_uniform(out, In), glorot_uniform(out), σ)
 end
 
-function (a::Recurrent)(x::T) where T
+function (a::RecurrentDense)(x::T) where T
     X = a.comb(a.state, x)
     m = a.σ.(a.W * X .+ a.b)
     a.state .= m
     return m
 end
 
-function (a::Recurrent{T,M,N,P,identity})(x::S) where {T,M,N,P,S}
+function (a::RecurrentDense{T,M,N,P,identity})(x::S) where {T,M,N,P,S}
     X = a.comb(a.state, x)
     m = a.W * X .+ a.b
     a.state .= m
