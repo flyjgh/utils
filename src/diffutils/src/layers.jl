@@ -11,6 +11,38 @@ glorot_uniform(rng::AbstractRNG, dims...) = (rand(rng, Float32, dims...) .- 5f-1
 glorot_uniform(dims...) = glorot_uniform(Random.GLOBAL_RNG, dims...)
 # -------------------------------------------------------------------
 """
+                  . Dense          . batchnorm
+                  .                .
+                  .                .
+                  .                .
+                  .                .
+                  .      (id)      .      (ReLu)
+    ----->        .    ------->    .     --------> 
+                  .                .
+                  .                .
+                  .                .
+                  .                .
+                  .                .
+            In -> .       out      . -> out
+"""
+struct Nonlinear{D<:Dense, E<:BatchNorm}
+    dense::D
+    norm::E
+end
+@functor Nonlinear
+
+function Nonlinear(In::Int, out::Int=In, σ=relu)
+    Nonlinear(
+        Dense(In, out),
+        BatchNorm(out, σ))
+end
+    
+function (m::Nonlinear)(x::T) where T
+    x |> m.dense |> m.norm
+end
+
+# -------------------------------------------------------------------
+"""
 less alloc and slightly faster than Flux.Dense for CuArrays.
 """
 struct Densegpu{A}
@@ -20,9 +52,13 @@ struct Densegpu{A}
 end
 @functor Densegpu
 
-function Densegpu(In, out, σ=identity)
+function Densegpu(In, out=In, σ=identity)
     Densegpu(glorot_uniform(out, In) |> CuArray, glorot_uniform(out) |> CuArray, σ)
 end
+
+function Base.show(io::IO, l::Densegpu)
+    ("Densegpu(", size(l.W, 2), ", ", size(l.W, 1), ", ", l.σ, ")") .|> x -> print(io, x)
+  end
 
 (a::Densegpu)(x::CuArray{Float32,N}) where N = a.σ.(a.W * x .+ a.b)
 (a::Densegpu{identity})(x::CuArray{Float32,N}) where N = a.W * x .+ a.b
@@ -31,37 +67,16 @@ end
 """
                             -------<------<-----
                           /                      ↖
-                         ↓                        |
-                        \\ /                       |
+                         |                        |
+                        \\↓/                       |
                ---------- --------------          |
-    In        |          |              |         |
-    In      \\ |          |         ƒ    | /      ↗
-    ------>     ---->----∘---->----:----    -->--
+              |          |              |         |
+    In      \\ |          |   σ.(W*x.+b) | /      ↗
+    ----->-- → ----->----o---->----:---- → -->--
             / |        comb             | \\    state (output)
               |                         |
                -------------------------
-
 """
-struct Recurrent{T,M,N}
-    comb::T
-    state::M
-    ƒ::N
-end
-@functor Recurrent
-
-function Recurrent(comb, ƒ, size, gpu=false)
-    gpu ?
-        Recurrent(comb, randn(Float32, size...) |> CuArray, ƒ) :
-        Recurrent(comb, randn(Float32, size...), ƒ)
-end
-
-function (a::Recurrent)(x::T) where T
-    m = a.ƒ(a.comb(a.state, x))
-    a.state .= m
-    return m
-end
-# -------------------------------------------------------------------
-
 struct RecurrentDense{T,M,N,P,A}
     comb::T
     state::M
@@ -90,3 +105,5 @@ function (a::RecurrentDense{T,M,N,P,identity})(x::S) where {T,M,N,P,S}
     a.state .= m
     return m
 end
+
+# -------------------------------------------------------------------

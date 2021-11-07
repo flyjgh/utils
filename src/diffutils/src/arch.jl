@@ -7,7 +7,7 @@ using Flux: Recur
 using Flux: LSTM
 using Flux: relu
 using Flux: σ
-using Base: @pure
+using CUDA: CuArray
 
 # ------------------------------------------------------------------- 
 # Control Flow                                                                                     
@@ -93,37 +93,37 @@ function (m::Parallelism)(x::T) where T
     m.combine(map(f -> f(x), m.layers)...)
 end
 # -------------------------------------------------------------------
-
-# ------------------------------------------------------------------- 
 """
-                  . Dense          . batchnorm
-                  .                .
-                  .                .
-                  .                .
-                  .                .
-                  .      (id)      .      (ReLu)
-    ----->        .    ------->    .     --------> 
-                  .                .
-                  .                .
-                  .                .
-                  .                .
-                  .                .
-            In -> .       out      . -> out
-"""
-struct Nonlinear{D <: Dense, E <: BatchNorm}
-    In::D
-    norm::E
-end
-@functor Nonlinear
+                            -------<------<-----
+                          /                      ↖
+                         |                        |
+                        \\↓/                       |
+               ---------- --------------          |
+              |          |              |         |
+    In      \\ |          |         ƒ    | /      ↗
+    ----->-- → ----->----o---->----:---- → -->--
+            / |        comb             | \\    state (output)
+              |                         |
+               -------------------------
 
-function Nonlinear(In::Int, out::Int=In, σ=relu)
-    Nonlinear(
-        Dense(In, out),
-        BatchNorm(out, σ))
+"""
+struct Recurrent{T,M,N}
+    comb::T
+    ƒ::N
+    state::M
 end
-    
-function (m::Nonlinear)(x::T) where T
-    x |> m.In |> m.norm
+@functor Recurrent
+
+function Recurrent(comb, ƒ, size::Int, gpu=false)
+    gpu ?
+        Recurrent(comb, ƒ, randn(Float32, size...) |> CuArray) :
+        Recurrent(comb, ƒ, randn(Float32, size...))
+end
+
+function (a::Recurrent)(x::T) where T
+    m = a.ƒ(a.comb(a.state, x))
+    a.state .= m
+    return m
 end
 # -------------------------------------------------------------------
 """
@@ -134,21 +134,21 @@ end
 
     .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .
                        η                            ∣η∣ = 1    
-                       ------:----(ReLu)------(σ)------    
+                       ------:----------------(σ)------    
     In               /                                  \\
     ----------------<                                    >- W .* η -->
                      \\                                  /
-                       ------:----(ReLu)---------------
-                       W                        ∣W∣ = out
+                       ------:-------------------------
+                       W
 """
 struct WCell{K, J}
-    weight::K
-    layer::J
+    W::K
+    ƒ::J
 end
 @functor WCell
 
 function (m::WCell)(x::T) where T
-    m.layer(x) .* σ.(m.weight(x))
+    m.ƒ(x) .* σ.(m.W(x))
 end
 # -------------------------------------------------------------------
 """
@@ -164,22 +164,19 @@ end
     ----------------<          /                         >- W .* η -->
                      \\        /                         /
                        ------:-------------------------
-                       W                        ∣W∣ = out
+                       W
 """
-struct CWCell{K,J,L<:Nonlinear}
-    weight::K
-    layer::J
+struct CWCell{K,J,L}
+    W::K
+    ƒ::J
+    comb::L
 end
 @functor CWCell
 
-function CWCell(weigth, layer, In::Int, layer_out::Int)
-    println("Weight layer input must be of size (In + layer_out)")
-    println("It must output a scalar")
-    return CWCell(weigth, layer, Nonlinear(In + layer_out, 1))
-end
+CWCell(W, ƒ) = CWCell(W, ƒ, (x, y) -> x .* y)
 
 function (m::CWCell)(x::T) where T
-    l = m.layer(x)
-    return l .* σ(m.weight(vcat(x, l)))
+    l = m.ƒ(x)
+    return l .* σ.(m.W(m.comb(x, l)))
 end
 # -------------------------------------------------------------------
