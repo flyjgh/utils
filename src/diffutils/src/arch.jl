@@ -1,13 +1,5 @@
+
 using Flux: @functor
-using Flux: Chain
-using Flux: Dense
-using Flux: BatchNorm
-using Flux: flatten
-using Flux: Recur
-using Flux: LSTM
-using Flux: relu
-using Flux: σ
-using CUDA: CuArray
 
 # ------------------------------------------------------------------- 
 # Control Flow                                                                                     

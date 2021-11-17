@@ -1,6 +1,9 @@
 using Random
 using CUDA: CuArray
 using Flux: @functor
+using Flux: Dense
+using Flux: BatchNorm
+
 # -------------------------------------------------------------------
 nfan() = 1, 1
 nfan(n) = 1, n
@@ -42,9 +45,7 @@ function (m::Nonlinear)(x::T) where T
 end
 
 # -------------------------------------------------------------------
-"""
-less alloc and slightly faster than Flux.Dense for CuArrays.
-"""
+
 struct Densegpu{A}
     W::CuArray{Float32, 2}
     b::CuArray{Float32, 1}
