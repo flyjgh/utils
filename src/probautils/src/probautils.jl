@@ -5,7 +5,7 @@ module probautils
     export fit_distrib, plotproba, plotfit
 
     function fit_distrib(a)
-        a = a |> x -> reshape(x, :)
+        a = reshape(a, :)
         distribs = [Bernoulli, Beta, Binomial, Categorical, Exponential, LogNormal, Normal, Gamma, Geometric, Pareto, Poisson, Cauchy{Float32}, Uniform, Laplace, InverseGaussian, Rayleigh]
         fits = fit.(distribs, Ref(a))
         return fits[findmax(loglikelihood.(fits, Ref(a)))[2]]
@@ -14,7 +14,7 @@ module probautils
     fit_distrib(distrib, a) = fit(distrib, a)
 
     function plotproba(a)
-        a = a |> x -> reshape(x, :)
+        a = reshape(a, :)
         histogram(a, background=:grey22)
     end
 
